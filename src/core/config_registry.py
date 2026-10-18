@@ -71,6 +71,9 @@ _CATEGORY_DEFINITIONS: List[Dict[str, Any]] = [
 ]
 
 WEB_SETTINGS_HIDDEN_FROM_UI = {
+    # Multi-asset orchestration is currently CLI/Actions-only, not a Web setting.
+    "BOND_FUND_LIST",
+    "GOLD_ETF_LIST",
     # Optional FXMacroData authorization is read from the process environment
     # when a tool runs; it is not a Web settings or model-input field.
     "FXMACRODATA_API_KEY",

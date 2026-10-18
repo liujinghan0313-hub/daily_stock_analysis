@@ -975,6 +975,8 @@ class Config:
     
     # === 自选股配置 ===
     stock_list: List[str] = field(default_factory=list)
+    bond_fund_list: List[str] = field(default_factory=list)
+    gold_etf_list: List[str] = field(default_factory=list)
 
     # === 飞书云文档配置 ===
     feishu_app_id: Optional[str] = None
@@ -1905,6 +1907,8 @@ class Config:
 
         return cls(
             stock_list=stock_list,
+            bond_fund_list=list(dict.fromkeys(split_stock_list(cls._resolve_env_value('BOND_FUND_LIST', default='')))),
+            gold_etf_list=list(dict.fromkeys(split_stock_list(cls._resolve_env_value('GOLD_ETF_LIST', default='')))),
             feishu_app_id=os.getenv('FEISHU_APP_ID'),
             feishu_app_secret=os.getenv('FEISHU_APP_SECRET'),
             feishu_folder_token=os.getenv('FEISHU_FOLDER_TOKEN'),

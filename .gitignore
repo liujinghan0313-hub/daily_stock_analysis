@@ -59,6 +59,8 @@ env/
 **/.llm_usage_hmac_secret
 logs/
 reports/
+!src/reports/
+!src/reports/*.py
 *.db
 *.sqlite
 *.sqlite3
