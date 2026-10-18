@@ -968,6 +968,30 @@ def run_full_analysis(
             daily_market_context_enabled=should_use_daily_market_context,
             daily_market_context_allow_generate=should_use_daily_market_context,
         )
+        from src.core.fund_pipeline import multi_asset_enabled, run_fund_analysis
+
+        if multi_asset_enabled(config):
+            # All ETF/bond/gold modules converge on one notification call.
+            # The legacy stock path below stays unchanged when opt-in lists are empty.
+            def load_fund_market_review():
+                review = _run_market_review_with_shared_lock(
+                    config, run_market_review,
+                    notifier=pipeline.notifier,
+                    analyzer=pipeline.analyzer,
+                    search_service=pipeline.search_service,
+                    send_notification=False,
+                    merge_notification=True,
+                    override_region=market_review_region,
+                    query_id=query_id,
+                    trigger_source="scheduled" if getattr(args, "schedule", False) else "cli",
+                )
+                return _market_review_report_text(review)
+
+            return _return_with_auto_backtest(run_fund_analysis(
+                config, args, pipeline, stock_codes,
+                market_loader=load_fund_market_review if should_run_market_review else None,
+            ))
+
         if should_use_daily_market_context:
             # Prompt-side context can reuse historical summaries, while full-merge
             # content must avoid silently reusing unrelated historical reports.
