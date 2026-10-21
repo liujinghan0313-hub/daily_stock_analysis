@@ -20,6 +20,23 @@ def run_fund_analysis(config, args, pipeline, stock_codes, *, provider=None, tod
     today = today or datetime.now(ZoneInfo('Asia/Shanghai')).date()
     funds = selected_funds(stock_codes, config.bond_fund_list, config.gold_etf_list)
     provider = provider or FundDataProvider(today)
+    if getattr(config, 'fund_report_format', 'legacy') == 'html':
+        from src.core.fund_dashboard_pipeline import prepare_fund_dashboard
+        # Preparation is separate from delivery: never retry sending via legacy
+        # after an SMTP/notification failure (which could duplicate an email).
+        try:
+            report = prepare_fund_dashboard(
+                config, provider, today, stock_codes, args,
+                search_service=getattr(pipeline, 'search_service', None),
+            )
+        except Exception:
+            logger.exception('可视化报告准备失败，恢复原版日报')
+        else:
+            if args.no_notify or args.dry_run:
+                return True
+            return pipeline.notifier.send(
+                report.text, email_send_to_all=True, route_type='report', email_report=report,
+            )
     reports = []
     for fund in funds:
         try:

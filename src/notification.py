@@ -2586,6 +2586,7 @@ class NotificationService(
         email_stock_codes: Optional[List[str]],
         email_send_to_all: bool,
         route_type: Optional[str] = None,
+        email_report: Optional[Any] = None,
     ) -> bool:
         use_image = self._should_use_image_for_channel(channel, image_bytes)
         sanitized_content = strip_hidden_markdown_metadata(content).strip()
@@ -2613,7 +2614,12 @@ class NotificationService(
                 receivers = self.get_all_email_receivers()
             elif email_stock_codes and self._stock_email_groups:
                 receivers = self.get_receivers_for_stocks(email_stock_codes)
-            if use_image:
+            if email_report is not None:
+                sent = self.send_to_email(
+                    sanitized_content, receivers=receivers, subject=email_report.subject,
+                    html_content=email_report.html, inline_images=email_report.images,
+                )
+            elif use_image:
                 sent = self._send_email_with_inline_image(image_bytes, receivers=receivers)
             else:
                 sent = self.send_to_email(sanitized_content, receivers=receivers)
@@ -2659,6 +2665,7 @@ class NotificationService(
         dedup_key: Optional[str] = None,
         cooldown_key: Optional[str] = None,
         structured_payload: Optional[Dict[str, Any]] = None,
+        email_report: Optional[Any] = None,
     ) -> NotificationDispatchResult:
         """
         Send a notification and return per-channel diagnostics.
@@ -2771,6 +2778,7 @@ class NotificationService(
             ch for ch in target_channels
             if ch.value in self._markdown_to_image_channels
             and ch not in {NotificationChannel.NTFY, NotificationChannel.GOTIFY}
+            and not (ch == NotificationChannel.EMAIL and email_report is not None)
         }
         if channels_needing_image:
             from src.md2img import markdown_to_image
@@ -2815,6 +2823,7 @@ class NotificationService(
                     email_stock_codes=email_stock_codes,
                     email_send_to_all=email_send_to_all,
                     route_type=route_type,
+                    **({"email_report": email_report} if email_report is not None else {}),
                 )
                 latency_ms = int((time.monotonic() - started_at) * 1000)
 
@@ -2877,6 +2886,7 @@ class NotificationService(
         dedup_key: Optional[str] = None,
         cooldown_key: Optional[str] = None,
         structured_payload: Optional[Dict[str, Any]] = None,
+        email_report: Optional[Any] = None,
     ) -> bool:
         """
         统一发送接口 - 向所有已配置的渠道发送。
@@ -2893,6 +2903,7 @@ class NotificationService(
             dedup_key=dedup_key,
             cooldown_key=cooldown_key,
             structured_payload=structured_payload,
+            **({"email_report": email_report} if email_report is not None else {}),
         )
         return bool(result.success)
 

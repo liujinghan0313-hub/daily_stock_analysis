@@ -1,0 +1,60 @@
+{
+  "history_days": 90,
+  "deviation_threshold_pp": 5,
+  "monthly_contribution_cny": null,
+  "holdings": {},
+  "funds": [
+    {
+      "name": "华夏中证A500ETF联接A",
+      "short_name": "A500",
+      "otc": "022430",
+      "code": "512050",
+      "kind": "股票ETF",
+      "asset": "股票",
+      "color": "#2563eb",
+      "target_pct": 25
+    },
+    {
+      "name": "易方达中证红利低波动ETF联接发起式A",
+      "short_name": "红利低波",
+      "otc": "020602",
+      "code": "563020",
+      "kind": "股票ETF",
+      "asset": "股票",
+      "color": "#8b5cf6",
+      "target_pct": 15
+    },
+    {
+      "name": "财通安瑞短债债券A",
+      "short_name": "安瑞短债",
+      "otc": "006965",
+      "code": "006965",
+      "kind": "主动债券基金",
+      "asset": "债券",
+      "color": "#0d9488",
+      "target_pct": 35
+    },
+    {
+      "name": "易方达中债1—3年政策性金融债指数A",
+      "short_name": "1—3年政金债",
+      "otc": "007364",
+      "code": "007364",
+      "kind": "债券指数基金",
+      "asset": "债券",
+      "color": "#f59e0b",
+      "target_pct": 20
+    },
+    {
+      "name": "华夏黄金ETF联接A",
+      "short_name": "华夏黄金",
+      "otc": "008701",
+      "code": "518850",
+      "kind": "黄金ETF",
+      "asset": "黄金",
+      "color": "#d29b18",
+      "target_pct": 5
+    }
+  ],
+  "contributions": [],
+  "email_detail": false
+}

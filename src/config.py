@@ -977,6 +977,10 @@ class Config:
     stock_list: List[str] = field(default_factory=list)
     bond_fund_list: List[str] = field(default_factory=list)
     gold_etf_list: List[str] = field(default_factory=list)
+    fund_report_format: str = "html"
+    fund_dashboard_config: Optional[str] = None
+    fund_chart_font: Optional[str] = None
+    fund_report_period: str = "daily"
 
     # === 飞书云文档配置 ===
     feishu_app_id: Optional[str] = None
@@ -1909,6 +1913,10 @@ class Config:
             stock_list=stock_list,
             bond_fund_list=list(dict.fromkeys(split_stock_list(cls._resolve_env_value('BOND_FUND_LIST', default='')))),
             gold_etf_list=list(dict.fromkeys(split_stock_list(cls._resolve_env_value('GOLD_ETF_LIST', default='')))),
+            fund_report_format=os.getenv('FUND_REPORT_FORMAT', 'html').strip().lower(),
+            fund_dashboard_config=os.getenv('FUND_DASHBOARD_CONFIG') or None,
+            fund_chart_font=os.getenv('FUND_CHART_FONT') or None,
+            fund_report_period=os.getenv('FUND_REPORT_PERIOD', 'daily').strip().lower(),
             feishu_app_id=os.getenv('FEISHU_APP_ID'),
             feishu_app_secret=os.getenv('FEISHU_APP_SECRET'),
             feishu_folder_token=os.getenv('FEISHU_FOLDER_TOKEN'),

@@ -65,6 +65,10 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
       
+      - name: 安装图表中文字体
+        if: steps.delivery_guard.outputs.skip != 'true'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+
       - name: 安装依赖
         if: steps.delivery_guard.outputs.skip != 'true'
         run: |
@@ -446,6 +450,10 @@ jobs:
           # Optional multi-asset mode; empty values preserve the stock-only path.
           BOND_FUND_LIST: ${{ vars.BOND_FUND_LIST }}
           GOLD_ETF_LIST: ${{ vars.GOLD_ETF_LIST }}
+          FUND_REPORT_FORMAT: ${{ vars.FUND_REPORT_FORMAT || 'html' }}
+          FUND_DASHBOARD_CONFIG: ${{ vars.FUND_DASHBOARD_CONFIG }}
+          FUND_DASHBOARD_CONFIG_JSON: ${{ secrets.FUND_DASHBOARD_CONFIG_JSON }}
+          FUND_REPORT_PERIOD: ${{ vars.FUND_REPORT_PERIOD || 'daily' }}
           MARKET_REVIEW_REGION: ${{ vars.MARKET_REVIEW_REGION || secrets.MARKET_REVIEW_REGION || 'cn' }}
           MARKET_REVIEW_COLOR_SCHEME: ${{ vars.MARKET_REVIEW_COLOR_SCHEME || secrets.MARKET_REVIEW_COLOR_SCHEME || 'green_up' }}
           

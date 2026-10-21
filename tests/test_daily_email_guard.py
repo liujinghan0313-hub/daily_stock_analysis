@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from io import BytesIO
 import json
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
 import yaml
@@ -120,6 +121,29 @@ def test_report_image_email_also_writes_marker(tmp_path, monkeypatch):
         email_stock_codes=None, email_send_to_all=False, route_type='report',
     ) is True
     assert marker.read_text(encoding='utf-8')
+
+
+def test_dashboard_email_writes_marker_only_after_success(tmp_path, monkeypatch):
+    marker = tmp_path / 'sent.txt'
+    monkeypatch.setenv('DAILY_EMAIL_DELIVERY_MARKER', str(marker))
+    notifier = NotificationService.__new__(NotificationService)
+    notifier._stock_email_groups = []
+    notifier._should_use_image_for_channel = lambda *_: False
+    notifier.send_to_email = mock.Mock(side_effect=[False, True])
+    report = SimpleNamespace(subject='五基金日报', html='<p>报告</p>', images=[])
+
+    def send():
+        return notifier._send_to_static_channel(
+            NotificationChannel.EMAIL, 'report', image_bytes=None,
+            email_stock_codes=None, email_send_to_all=False,
+            route_type='report', email_report=report,
+        )
+
+    assert send() is False
+    assert not marker.exists()
+    assert send() is True
+    assert marker.read_text(encoding='utf-8')
+    assert notifier.send_to_email.call_args.kwargs['html_content'] == report.html
 
 
 def test_workflow_has_three_postclose_attempts_and_one_delivery_guard():

@@ -71,6 +71,7 @@ _CATEGORY_DEFINITIONS: List[Dict[str, Any]] = [
 ]
 
 WEB_SETTINGS_HIDDEN_FROM_UI = {
+    "FUND_REPORT_FORMAT", "FUND_DASHBOARD_CONFIG", "FUND_DASHBOARD_CONFIG_JSON", "FUND_CHART_FONT", "FUND_REPORT_PERIOD",
     # Multi-asset orchestration is currently CLI/Actions-only, not a Web setting.
     "BOND_FUND_LIST",
     "GOLD_ETF_LIST",

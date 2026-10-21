@@ -14,6 +14,7 @@ from email.mime.image import MIMEImage
 from email.header import Header
 from email.utils import formataddr
 import smtplib
+import re
 
 from data_provider.base import normalize_stock_code
 from src.config import Config
@@ -46,6 +47,45 @@ SMTP_CONFIGS = {
     # 139邮箱
     "139.com": {"server": "smtp.139.com", "port": 465, "ssl": True},
 }
+
+
+
+def build_email_body(content, html_content=None, inline_images=None):
+    """Build standards-based related/alternative MIME without credentials or I/O."""
+    text = strip_hidden_markdown_metadata(content).strip()
+    html = html_content if html_content is not None else markdown_to_html_document(text)
+    valid = []
+    seen = set()
+    size = 0
+    for image in inline_images or []:
+        cid = image.cid
+        if cid in seen:
+            logger.warning('跳过重复CID图表')
+            continue
+        if (not re.fullmatch(r'[A-Za-z0-9_-]+', cid) or cid in seen
+                or not image.png.startswith(b'\x89PNG\r\n\x1a\n')
+                or size + len(image.png) > 2_000_000):
+            logger.warning('跳过无效或超限的内嵌图表')
+            # Do not leave a broken CID reference in the delivered HTML.
+            html = re.sub(r'<img\b[^>]*src="cid:' + re.escape(cid) + r'"[^>]*>',
+                          '<p>图表暂不可用，请阅读文字说明。</p>', html)
+            continue
+        seen.add(cid)
+        size += len(image.png)
+        valid.append(image)
+    alternative = MIMEMultipart('alternative')
+    alternative.attach(MIMEText(text, 'plain', 'utf-8'))
+    alternative.attach(MIMEText(html, 'html', 'utf-8'))
+    if not valid:
+        return alternative
+    related = MIMEMultipart('related')
+    related.attach(alternative)
+    for image in valid:
+        part = MIMEImage(image.png, _subtype='png')
+        part.add_header('Content-ID', '<' + image.cid + '>')
+        part.add_header('Content-Disposition', 'inline', filename=image.cid + '.png')
+        related.attach(part)
+    return related
 
 
 class EmailSender:
@@ -138,6 +178,8 @@ class EmailSender:
         receivers: Optional[List[str]] = None,
         *,
         timeout_seconds: Optional[float] = None,
+        html_content: Optional[str] = None,
+        inline_images: Optional[List] = None,
     ) -> bool:
         """
         通过 SMTP 发送邮件（自动识别 SMTP 服务器）
@@ -165,23 +207,11 @@ class EmailSender:
                 date_str = datetime.now().strftime('%Y-%m-%d')
                 subject = f"📈 股票智能分析报告 - {date_str}"
 
-            sanitized_content = strip_hidden_markdown_metadata(content).strip()
-            
-            # 将 Markdown 转换为简单 HTML
-            html_content = markdown_to_html_document(sanitized_content)
-            
-            # 构建邮件
-            msg = MIMEMultipart('alternative')
+            msg = build_email_body(content, html_content, inline_images)
             msg['Subject'] = Header(subject, 'utf-8')
             msg['From'] = self._format_sender_address(sender)
             msg['To'] = ', '.join(receivers)
-            
-            # 添加纯文本和 HTML 两个版本
-            text_part = MIMEText(sanitized_content, 'plain', 'utf-8')
-            html_part = MIMEText(html_content, 'html', 'utf-8')
-            msg.attach(text_part)
-            msg.attach(html_part)
-            
+
             # 自动识别 SMTP 配置
             domain = sender.split('@')[-1].lower()
             smtp_config = SMTP_CONFIGS.get(domain)
