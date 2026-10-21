@@ -227,7 +227,7 @@ daily_stock_analysis/
 
 ### 5. 完成！
 
-默认每个工作日 **18:00（北京时间）** 自动执行。
+每日工作流在工作日北京时间 **16:10** 首次尝试，17:10 与 18:10 提供备用触发。实际启动时间取决于 GitHub Actions 排队情况。
 
 ---
 
@@ -833,13 +833,19 @@ OpenD 默认地址为 `127.0.0.1:11111`，可用 `FUTU_OPEND_HOST` / `FUTU_OPEND
 
 ### GitHub Actions 定时
 
-编辑 `.github/workflows/00-daily-analysis.yml`:
+`.github/workflows/00-daily-analysis.yml` 当前在 A 股收盘后安排三次触发机会：
 
 ```yaml
 schedule:
   # UTC 时间，北京时间 = UTC + 8
-  - cron: '0 10 * * 1-5'   # 周一到周五 18:00（北京时间）
+  - cron: '10 8 * * 1-5'   # 周一到周五 16:10（北京时间）
+  - cron: '10 9 * * 1-5'   # 17:10 备用
+  - cron: '10 10 * * 1-5'  # 18:10 备用（原触发时间）
 ```
+
+工作流启动后会用内置 `GITHUB_TOKEN` 查询当天的 `daily-email-sent-YYYY-MM-DD` Artifact；已经成功发送报告邮件则跳过后续分析。邮件通过 SMTP 提交成功后才写本地标记，并由工作流上传；分析报告和日志 Artifact 仍按原方式保留 30 天。此机制无需新增 Variables 或 Secrets，也不改变 QQ 邮箱配置。手动运行不受当天发送记录限制。
+
+GitHub 的 `schedule` 可能延迟或不触发；三次机会只能降低漏发概率，无法承诺固定收件时刻。若标记上传失败，备用触发仍可能重复发送；若 GitHub API 查询失败，定时运行会停止发送并在 Actions 留下失败记录，避免未经核验的重复邮件。工作流不预测未公布的基金净值，报告应展示最新已确认净值日期。
 
 常用时间对照：
 

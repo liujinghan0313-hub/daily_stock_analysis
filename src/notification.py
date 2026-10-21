@@ -17,11 +17,13 @@ A股自选股智能分析系统 - 通知层
 from __future__ import annotations
 
 import logging
+import os
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import List, Dict, Any, Optional, Tuple, TYPE_CHECKING
 from enum import Enum
+from pathlib import Path
 
 from src.config import Config, get_config
 from src.enums import ReportType
@@ -2612,11 +2614,16 @@ class NotificationService(
             elif email_stock_codes and self._stock_email_groups:
                 receivers = self.get_receivers_for_stocks(email_stock_codes)
             if use_image:
-                return self._send_email_with_inline_image(image_bytes, receivers=receivers)
-            return self.send_to_email(
-                sanitized_content,
-                receivers=receivers,
-            )
+                sent = self._send_email_with_inline_image(image_bytes, receivers=receivers)
+            else:
+                sent = self.send_to_email(sanitized_content, receivers=receivers)
+            marker = os.environ.get("DAILY_EMAIL_DELIVERY_MARKER")
+            if sent and route_type == "report" and marker:
+                try:
+                    Path(marker).write_text(datetime.now().isoformat(), encoding="utf-8")
+                except OSError:
+                    logger.exception("邮件已发送，但发送标记写入失败，后续补跑可能重复")
+            return sent
         if channel == NotificationChannel.PUSHOVER:
             return self.send_to_pushover(content)
         if channel == NotificationChannel.NTFY:
