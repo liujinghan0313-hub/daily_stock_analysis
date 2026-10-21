@@ -1,9 +1,11 @@
 name: 每日股票分析
 
 on:
-  # 定时触发 - 每天北京时间 18:00 (UTC 10:00)
+  # 工作日收盘后先尝试 16:10；如未成功发送，17:10 和原 18:10 作为备用。
   schedule:
-    - cron: '10 10 * * 1-5'     # 周一到周五，UTC 10:00 = 北京时间 18:10
+    - cron: '10 8 * * 1-5'      # 北京时间 16:10 / 迪拜时间 12:10
+    - cron: '10 9 * * 1-5'      # 北京时间 17:10 / 迪拜时间 13:10
+    - cron: '10 10 * * 1-5'     # 北京时间 18:10 / 迪拜时间 14:10
   
   # 手动触发
   workflow_dispatch:
@@ -23,6 +25,11 @@ on:
         default: false
         type: boolean
 
+# 读取历史发送标记所需权限；上传 Artifact 仍使用 Actions 默认运行时凭据。
+permissions:
+  contents: read
+  actions: read
+
 # 并发控制：同一时间只运行一个分析任务
 concurrency:
   group: stock-analysis
@@ -38,30 +45,42 @@ jobs:
     timeout-minutes: ${{ fromJSON(vars.ANALYSIS_TIMEOUT_MINUTES || '30') }}
     
     steps:
-      - name: 随机延迟（避免固定时间访问）
-        run: sleep $((RANDOM % 60))  # 随机延迟0-60秒启动
-      
       - name: 检出代码
         uses: actions/checkout@v5
+
+      - name: 核对当日邮件发送状态
+        id: delivery_guard
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/daily_email_guard.py
+
+      - name: 随机延迟（避免固定时间访问）
+        if: steps.delivery_guard.outputs.skip != 'true'
+        run: sleep $((RANDOM % 60))  # 随机延迟0-60秒启动
       
       - name: 设置 Python 环境
+        if: steps.delivery_guard.outputs.skip != 'true'
         uses: actions/setup-python@v6
         with:
           python-version: '3.11'
           cache: 'pip'
       
       - name: 安装依赖
+        if: steps.delivery_guard.outputs.skip != 'true'
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
           python -c "import futu; print('✅ futu SDK import OK')"
       
       - name: 创建必要目录
+        if: steps.delivery_guard.outputs.skip != 'true'
         run: |
           mkdir -p data logs reports
       
       - name: 执行股票分析
+        if: steps.delivery_guard.outputs.skip != 'true'
         env:
+          DAILY_EMAIL_DELIVERY_MARKER: reports/daily_email_sent_${{ steps.delivery_guard.outputs.cn_date }}.txt
           # ==========================================
           # AI 配置
           # ==========================================
@@ -563,9 +582,18 @@ jobs:
             python main.py $FORCE_RUN_ARG
           fi
       
+      - name: 记录已发送的当日邮件
+        if: always() && steps.delivery_guard.outcome == 'success' && steps.delivery_guard.outputs.skip != 'true'
+        uses: actions/upload-artifact@v6
+        with:
+          name: daily-email-sent-${{ steps.delivery_guard.outputs.cn_date }}
+          path: reports/daily_email_sent_${{ steps.delivery_guard.outputs.cn_date }}.txt
+          if-no-files-found: ignore
+          retention-days: 30
+
       - name: 上传分析报告
         uses: actions/upload-artifact@v6
-        if: always()
+        if: always() && steps.delivery_guard.outcome == 'success' && steps.delivery_guard.outputs.skip != 'true'
         with:
           name: analysis-reports-${{ github.run_number }}
           path: |
@@ -574,7 +602,7 @@ jobs:
           retention-days: 30
       
       - name: 显示运行结果
-        if: always()
+        if: always() && steps.delivery_guard.outcome == 'success' && steps.delivery_guard.outputs.skip != 'true'
         run: |
           echo ""
           echo "=========================================="
